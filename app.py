@@ -7,25 +7,48 @@ class Coordinator:
     def __init__(self):
         self.count = 0
         self.queue = []
-        self.nodes = dict()
+        self.hosts   = dict()
+        self.workers = dict()
 
     def add_job(self, params):
         self.queue.append(params)
 
-    def get_job(self, node):
-        if node["worker_id"] in self.nodes:
-            # Update the counts, check jobs
-            pass
-        else:
-            # Create entry
-            self.nodes[node["worker_id"]] = node
+    def worker_done(self, params):
+        worker_id = params["hostname"] + params["worker_id"]
+        del self.workers[worker_id]
 
+    def check_in(self, params):
+        worker_id = params["hostname"] + params["worker_id"]
+
+        # They should exist
+        assert worker_id in self.workers, self.workers
+
+        # The job ids should match
+        job = self.workers[worker_id]
+        assert job["job_id"] == params["job_id"], \
+                "Got <%s>, expected <%s>" % (params["job_id"], job["job_id"])
+
+        job["memory"] = float(params["memory"])
+
+
+    def get_job(self, params):
+        worker_id = params["hostname"] + params["worker_id"]
+
+        # Should not already be running something
+        if worker_id in self.workers:
+            assert False, "worker already has job"
+
+        # If we have something, give it
         if self.queue:
             self.count += 1
+            job_id = self.count
             job = dict(
-                    job_id = self.count,
-                    hostname = node["worker_id"],
-                    params   = self.queue.pop(0))
+                    job_id    = str(job_id),
+                    hostname  = params["hostname"],
+                    worker_id = params["worker_id"],
+                    params    = self.queue.pop(0))
+            self.workers[worker_id] = dict(**job, memory = 0)
+
             return job
 
 C = Coordinator()
@@ -44,14 +67,16 @@ def get_job():
         resp["job"] = job
     return resp
 
-@app.route("/check-in")
+@app.route("/check-in", methods=['POST'])
 def check_in():
-    worker_id = request.form["worker_id"]
-    C.check_in(worker_id)
+    C.check_in(request.form)
     return 'OK'
 
-@app.route("/job-done")
+@app.route("/job-done", methods=['POST'])
 def job_done():
-    f = request.files['upload']
-    f.save('data/' + secure_filename(f.filename))
+    C.worker_done(request.form)
+    if False:
+        f = request.files['upload']
+        f.save('data/' + secure_filename(f.filename))
+    return 'OK'
 
