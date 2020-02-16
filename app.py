@@ -44,6 +44,12 @@ def get_job():
         resp["job"] = job
     return resp
 
+@app.route("/check-in")
+def check_in():
+    worker_id = request.form["worker_id"]
+    C.check_in(worker_id)
+    return 'OK'
+
 @app.route("/job-done")
 def job_done():
     f = request.files['upload']
