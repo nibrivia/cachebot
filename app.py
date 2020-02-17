@@ -14,6 +14,9 @@ class Coordinator:
     def add_job(self, params):
         self.queue.append(dict(**params)) #, job_id = str(uuid.uuid4())))
 
+    def internal_worker_id(self, hostname, worker_id):
+        return (hostname, worker_id)
+
     def worker_done(self, hostname, worker_id, return_code):
         worker_id = hostname + worker_id
 
@@ -40,6 +43,9 @@ class Coordinator:
                 "Got <%s>, expected <%s>" % (job_id, job["job_id"])
 
         job["memory"] = float(memory)
+        print(memory)
+
+        return "OK"
 
 
     def get_job(self, hostname, worker_id):
@@ -51,7 +57,7 @@ class Coordinator:
 
         # Nothing to do, we're done
         if not self.queue:
-            return
+            return dict(wait = 4)
 
         # Assign new job
         self.count += 1
@@ -63,7 +69,7 @@ class Coordinator:
                 params    = self.queue.pop(0))
         self.workers[worker_id] = dict(**job, memory = 0)
 
-        return job
+        return dict(job = job)
 
 C = Coordinator()
 C.add_job(dict(
@@ -85,16 +91,16 @@ def submit_job():
 
 @app.route("/get-job", methods=['POST'])
 def get_job():
-    job = C.get_job(**request.form)
-    resp = dict()
-    if job is not None:
-        resp["job"] = job
-    return resp
+    return C.get_job(**request.form)
 
 @app.route("/check-in", methods=['POST'])
 def check_in():
     C.check_in(**request.form)
     return 'OK'
+
+# TODO generate and make .sif available
+#@app.route("/get-sif")
+
 
 @app.route("/job-done", methods=['POST'])
 def job_done():

@@ -88,10 +88,17 @@ class Worker:
                 self.run_job(job)
             else:
                 # Wait and try again
-                time.sleep(5) # TODO some randomness
+                try:
+                    wait_time = int(response.json()["wait"])
+                    time.sleep(wait_time)
+                except:
+                    time.sleep(5)
+
+            # This guarantees we at least wait 1s between requests
             time.sleep(1)
 
 def local_coordinator(max_jobs):
+    """Starts local workers and catches them when they fail"""
     workers = [Worker(i, HOSTNAME) for i in range(max_jobs)]
     with concurrent.futures.ProcessPoolExecutor(max_workers = max_jobs) as executor:
         for i, w in enumerate(workers):
@@ -99,6 +106,8 @@ def local_coordinator(max_jobs):
             f.add_done_callback(worker_exit)
 
 def worker_exit(f):
+    """Gets called on a worker terminating, tries to determine the cause and emails out??"""
+    # TODO email out
     print("A worker terminated...")
     print(f.result())
 
