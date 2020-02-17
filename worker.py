@@ -43,10 +43,6 @@ class Worker:
         while True:
             try:
                 r = proc.wait(timeout = 2)
-                if r != 0:
-                    # Hey, it failed
-                    pass
-                    return
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
@@ -83,7 +79,6 @@ class Worker:
                         data = self.worker_params)
             except:
                 # Server not up, something
-                print("%s: server didn't respond, trying again later..." % self.worker_id)
                 time.sleep(10)
                 continue
 
