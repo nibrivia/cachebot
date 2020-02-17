@@ -104,7 +104,13 @@ def worker_exit(f):
 
 def update_sif():
     """This will be run everytime, re-run the singularity def file if need be"""
-    pass
+    p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def", shell = True)
+    if p.returncode != 0:
+        # Needs refreshing
+        # Download file and try again
+        print(".sif not up-to-date, no update mechanism, abort")
+        return False
+    return True
 
 def check_install():
     """Make sure everything works, or die trying"""
@@ -113,8 +119,14 @@ def check_install():
     os.chdir("/home/nibr/sim-worker/")
 
     # Check .sif
-    update_sif()
+    if not update_sif():
+        return False
+
+    return True
 
 if __name__ == "__main__":
-    check_install()
+    if not check_install():
+        print("Install didn't check out, aborting")
+        sys.exit(-1)
+
     local_coordinator(max_jobs = 2)
