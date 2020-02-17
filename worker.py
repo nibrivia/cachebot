@@ -1,8 +1,6 @@
 import requests
-import time
 import concurrent.futures
-import subprocess
-import sys
+import sys, os, time, subprocess, psutil
 
 # Worker constants
 import socket
@@ -27,25 +25,37 @@ class Worker:
 
     def run_job(self, job):
         """This functions deals with all the logistics of actually running a job"""
-        print("%s: starting job %s" % (self.worker_id, job))
 
-        # Start job
-        self.job = job
-        proc = subprocess.Popen(["/bin/sleep", "10"])
-        print("%s: job started" % self.worker_id)
+        # Named args need pasting and splitting
+        baseline = ["singularity", "run", "netsim.sif"]
+        args = " ".join(["--%s %s" % (k, v) for k, v in job["params"].items()]).split()
+
+        # Run it
+        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
+        #proc = subprocess.Popen(["sleep", "10"])
+
+        # Get some info, will be useful later
+        pid = proc.pid
+        ps  = psutil.Process(pid)
+        print("%s: [%d] " % (self.worker_id, pid) + " ".join(baseline+args))
 
         # Wait and do check-ins
         while True:
             try:
-                proc.wait(timeout = 2)
+                r = proc.wait(timeout = 2)
+                if r != 0:
+                    # Hey, it failed
+                    pass
+                    return
+                print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
-                print("%s: check-in!" % self.worker_id)
+                memory_usage = ps.memory_info().rss
                 resp = requests.post(
                         SERVER + "/check-in",
                         data = dict(**self.worker_params,
                                     job_id = job["job_id"],
-                                    memory = 0)
+                                    memory = memory_usage)
                             )
                 if resp.text != "OK":
                     print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
@@ -53,12 +63,14 @@ class Worker:
 
 
         # DONE, upload results
-        print("%s: job done" % self.worker_id)
-        resp = requests.post(SERVER + "/job-done", data = self.worker_params)
+        resp = requests.post(SERVER + "/job-done",
+                data = dict(**self.worker_params,
+                            return_code = r))
         if resp.text != "OK":
             print(resp.text)
             print("Server responded %s, exiting" % resp.text)
             sys.exit(-1)
+
 
 
     def start(self):
@@ -66,8 +78,14 @@ class Worker:
         print("Starting worker %s" % self.worker_id)
         while True:
             # Get job
-            response = requests.post(SERVER + "/get-job",
-                    data = self.worker_params)
+            try:
+                response = requests.post(SERVER + "/get-job",
+                        data = self.worker_params)
+            except:
+                # Server not up, something
+                print("%s: server didn't respond, trying again later..." % self.worker_id)
+                time.sleep(10)
+                continue
 
             if response.status_code == 200 and "job" in response.json():
                 # Got a job, do it
@@ -75,8 +93,8 @@ class Worker:
                 self.run_job(job)
             else:
                 # Wait and try again
-                print("%s: no job, trying again later" % self.worker_id)
                 time.sleep(5) # TODO some randomness
+            time.sleep(1)
 
 def local_coordinator(max_jobs):
     workers = [Worker(i, HOSTNAME) for i in range(max_jobs)]
@@ -89,6 +107,19 @@ def worker_exit(f):
     print("A worker terminated...")
     print(f.result())
 
+def update_sif():
+    """This will be run everytime, re-run the singularity def file if need be"""
+    pass
+
+def check_install():
+    """Make sure everything works, or die trying"""
+    # Check if this is a directory first, clone if need be
+    # Make this not username depndent
+    os.chdir("/home/nibr/sim-worker/")
+
+    # Check .sif
+    update_sif()
 
 if __name__ == "__main__":
-    local_coordinator(max_jobs = 1)
+    check_install()
+    local_coordinator(max_jobs = 2)
