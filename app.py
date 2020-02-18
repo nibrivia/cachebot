@@ -1,4 +1,5 @@
 from flask import Flask, request, url_for
+from secrets import notify_url
 import json, requests
 import uuid
 #from wekzeug.utils import secure_filename
@@ -19,10 +20,15 @@ class Coordinator:
 
     def worker_done(self, hostname, worker_id, return_code):
         worker_id = hostname + worker_id
-        notify_url = "https://hooks.slack.com/services/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"
-        job = self.workers[worker_id]
-        params = dict(text = "%s done with job #%s: `%s`" % (worker_id, job["job_id"], job["params"]))
-        r = requests.post(notify_url, data = json.dumps(params))
+
+        # Notify slack
+        try:
+            job = self.workers[worker_id]
+            params = dict(text = "%s done with job #%s: `%s`" % (worker_id, job["job_id"], job["params"]))
+            r = requests.post(notify_url, data = json.dumps(params))
+        except:
+            # If we fail, whatever
+            pass
 
         if int(return_code) != 0:
             self.job_failed(worker_id)
