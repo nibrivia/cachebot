@@ -3,4 +3,4 @@ secrets.py
 venv
 *.pyc
 Session.vim
-static/netsim.sif
+netsim.sif
