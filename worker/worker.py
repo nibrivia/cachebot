@@ -8,6 +8,7 @@ import multiprocessing
 N_CPUS   = multiprocessing.cpu_count()
 HOSTNAME = socket.gethostname()
 SERVER   = "http://cambridge.csail.mit.edu:5000"
+#SERVER   = "http://localhost:5000"
 
 class Worker:
     def __init__(self, worker_id, hostname):
@@ -46,20 +47,25 @@ class Worker:
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
+                pass # Ignore the exception
+
+            try:
                 children = ps.children(recursive = True)
                 if children:
                     ps = children[-1]
                 memory_usage = ps.memory_info().rss
-                #print(ps.memory_full_info())
-                resp = requests.post(
-                        SERVER + "/check-in",
-                        data = dict(**self.worker_params,
-                                    job_id = job["job_id"],
-                                    memory = memory_usage)
-                            )
-                if resp.text != "OK":
-                    print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
-                    sys.exit(-1)
+            except:
+                pass
+            #print(ps.memory_full_info())
+            resp = requests.post(
+                    SERVER + "/check-in",
+                    data = dict(**self.worker_params,
+                                job_id = job["job_id"],
+                                memory = memory_usage)
+                        )
+            if resp.text != "OK":
+                print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
+                sys.exit(-1)
 
 
         # DONE, upload results
