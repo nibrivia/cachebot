@@ -117,7 +117,7 @@ def update_sif(retry_ok=True):
     # Check that the local .sif and our def match up
     print("check singularity installed... ", end = "", flush = True)
     try:
-        p = subprocess.run("singularity --version".split())
+        p = subprocess.run("singularity --version".split(), stdout = subprocess.DEVNULL)
         if p.returncode == 0:
             print("\033[0;32mOK\033[0;0m")
         else:
@@ -133,7 +133,7 @@ def update_sif(retry_ok=True):
     #        stderr = subprocess.DEVNULL, shell = True)
 
     # Yup, we're done!
-    if p.returncode == 0:
+    if os.path.isfile("netsim.sif"):
         print("\033[0;32mOK\033[0;0m")
         return True
 
@@ -146,7 +146,7 @@ def update_sif(retry_ok=True):
             cmd = "wget %s/static/netsim.sif" % SERVER
             print(cmd)
             subprocess.run(cmd.split())
-            print("\033[0;32mOK\033[0;0m")
+            print("\033[0;32mOK, retry\033[0;0m")
             return update_sif(retry_ok = False) # try again, but don't recurse
         except Exception as e:
             print(e)
