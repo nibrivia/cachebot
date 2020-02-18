@@ -105,7 +105,8 @@ def check_in():
 # TODO generate and make .sif available
 #@app.route("/get-sif")
 
-url_for('static', filename="netsim.sif")
+with app.test_request_context():
+    url_for('static', filename="netsim.sif")
 
 @app.route("/job-done", methods=['POST'])
 def job_done():
