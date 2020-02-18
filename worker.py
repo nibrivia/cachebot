@@ -31,8 +31,8 @@ class Worker:
         args = " ".join(["--%s %s" % (k, v) for k, v in job["params"].items()]).split()
 
         # Run it
-        #proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
-        proc = subprocess.Popen(["sleep", "5"])
+        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
+        #proc = subprocess.Popen(["sleep", "5"])
 
         # Get some info, will be useful later
         pid = proc.pid
@@ -46,7 +46,11 @@ class Worker:
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
+                children = ps.children(recursive = True)
+                if children:
+                    ps = children[-1]
                 memory_usage = ps.memory_info().rss
+                #print(ps.memory_full_info())
                 resp = requests.post(
                         SERVER + "/check-in",
                         data = dict(**self.worker_params,
