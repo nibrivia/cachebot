@@ -7,7 +7,7 @@ import socket
 import multiprocessing
 N_CPUS   = multiprocessing.cpu_count()
 HOSTNAME = socket.gethostname()
-SERVER   = "http://localhost:5000"
+SERVER   = "http://cambridge.csail.mit.edu:5000"
 
 class Worker:
     def __init__(self, worker_id, hostname):
@@ -31,8 +31,8 @@ class Worker:
         args = " ".join(["--%s %s" % (k, v) for k, v in job["params"].items()]).split()
 
         # Run it
-        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
-        #proc = subprocess.Popen(["sleep", "10"])
+        #proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
+        proc = subprocess.Popen(["sleep", "5"])
 
         # Get some info, will be useful later
         pid = proc.pid
@@ -111,23 +111,43 @@ def worker_exit(f):
     print("A worker terminated...")
     print(f.result())
 
-def update_sif():
+def update_sif(retry_ok=True):
     """This will be run everytime, re-run the singularity def file if need be"""
+
+    # Check that the local .sif and our def match up
+    print("check netsim.sif... ", end = "", flush = True)
     p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def",
             stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL, shell = True)
-    if p.returncode != 0:
-        # Needs refreshing
-        # Download file and try again
-        print(".sif not up-to-date, no update mechanism, abort")
-        return False
-    return True
+
+    # Yup, we're done!
+    if p.returncode == 0:
+        print("\033[0;32mOK\033[0;0m")
+        return True
+    print("\033[0;31mNO\033[0;0m")
+
+    if retry_ok:
+        print("      netsim.sif update... ", end = "", flush = True)
+        try:
+            requests.get(SERVER + "/static/netsim.sif")
+            return update_sif(retry_ok = False) # try again, but don't recurse
+        except:
+            pass
+
+
+    print("\033[0;31mFAIL\033[0;0m")
+    return False
 
 def check_install(sim_dir = "/home/nibr/sim-worker/"):
     """Make sure everything works, or die trying"""
     # Check if this is a directory first, clone if need be
     # TODO Make this not username depndent
+    print("check repo... ", end = "", flush = True)
     if not os.path.isdir(sim_dir):
-        subprocess.run(["git", "clone", "https://github.com/nibrivia/rotorsim", sim_dir])
+        print("\033[0;31mNO\033[0;0m")
+        print("      repo clone... ", end = "", flush=True)
+        subprocess.run(["git", "clone", "https://github.com/nibrivia/rotorsim", sim_dir],
+                stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
+    print("\033[0;32mOK\033[0;0m")
 
     os.chdir(sim_dir)
 
@@ -139,7 +159,7 @@ def check_install(sim_dir = "/home/nibr/sim-worker/"):
 
 if __name__ == "__main__":
     if not check_install():
-        print("Install didn't check out, aborting")
+        print("setup didn't check out, aborting")
         sys.exit(-1)
 
     local_coordinator(max_jobs = 2)
