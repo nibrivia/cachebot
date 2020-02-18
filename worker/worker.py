@@ -8,6 +8,7 @@ import multiprocessing
 N_CPUS   = multiprocessing.cpu_count()
 HOSTNAME = socket.gethostname()
 SERVER   = "http://cambridge.csail.mit.edu:5000"
+#SERVER   = "http://localhost:5000"
 
 class Worker:
     def __init__(self, worker_id, hostname):
@@ -25,6 +26,7 @@ class Worker:
 
     def run_job(self, job):
         """This functions deals with all the logistics of actually running a job"""
+        job_id = job["job_id"]
 
         # Named args need pasting and splitting
         baseline = ["singularity", "run", "netsim.sif"]
@@ -46,30 +48,42 @@ class Worker:
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
+                pass # Ignore the exception
+
+            try:
                 children = ps.children(recursive = True)
                 if children:
                     ps = children[-1]
                 memory_usage = ps.memory_info().rss
-                #print(ps.memory_full_info())
-                resp = requests.post(
-                        SERVER + "/check-in",
-                        data = dict(**self.worker_params,
-                                    job_id = job["job_id"],
-                                    memory = memory_usage)
-                            )
-                if resp.text != "OK":
-                    print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
-                    sys.exit(-1)
+            except:
+                pass
+            #print(ps.memory_full_info())
+            resp = requests.post(
+                    SERVER + "/check-in",
+                    data = dict(**self.worker_params,
+                                job_id = job["job_id"],
+                                memory = memory_usage)
+                        )
+            if resp.text != "OK":
+                print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
+                try:
+                    proc.kill()
+                except:
+                    pass
+                return
 
 
         # DONE, upload results
-        resp = requests.post(SERVER + "/job-done",
+        resp = requests.post(
+                SERVER + "/job-done",
                 data = dict(**self.worker_params,
-                            return_code = r))
+                            return_code = r),
+                files = dict(result = str(job_id)+".csv")
+                )
         if resp.text != "OK":
             print(resp.text)
-            print("Server responded %s, exiting" % resp.text)
-            sys.exit(-1)
+            print("Server responded something weird... stopping job\nServer response:\n%s" % resp.text)
+            return
 
 
 
