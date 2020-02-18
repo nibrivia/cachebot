@@ -117,21 +117,26 @@ def update_sif(retry_ok=True):
     # Check that the local .sif and our def match up
     print("check netsim.sif... ", end = "", flush = True)
     p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def",
-            stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL, shell = True)
+            stderr = subprocess.DEVNULL, shell = True)
 
     # Yup, we're done!
     if p.returncode == 0:
         print("\033[0;32mOK\033[0;0m")
         return True
-    print("\033[0;31mNO\033[0;0m")
 
     if retry_ok:
-        print("      netsim.sif update... ", end = "", flush = True)
+        print("\033[0;31mNO\033[0;0m")
+
+    if retry_ok:
+        print("      netsim.sif download... ", end = "", flush = True)
         try:
-            requests.get(SERVER + "/static/netsim.sif")
+            cmd = "wget %s/static/netsim.sif" % SERVER
+            print(cmd)
+            subprocess.run(cmd.split())
+            print("\033[0;32mOK\033[0;0m")
             return update_sif(retry_ok = False) # try again, but don't recurse
-        except:
-            pass
+        except Exception as e:
+            print(e)
 
 
     print("\033[0;31mFAIL\033[0;0m")
