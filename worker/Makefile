@@ -22,6 +22,7 @@ install:
 		echo 'export PATH=/usr/local/go/bin:$${PATH}:$${GOPATH}/bin' >> ~/.bashrc && \
 		source ~/.bashrc
 	export VERSION=3.3.0 && \
+		export PATH=/usr/local/go/bin:$${PATH}:$${GOPATH}/bin && \
 		wget https://github.com/sylabs/singularity/releases/download/v$${VERSION}/singularity-$${VERSION}.tar.gz && \
 		tar -xzf singularity-$${VERSION}.tar.gz && \
 		cd singularity && \
