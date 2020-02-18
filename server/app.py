@@ -27,6 +27,9 @@ class Coordinator:
     def internal_worker_id(self, hostname, worker_id):
         return (hostname, worker_id)
 
+    def status(self):
+        return dict(queue = self.queue, jobs = self.jobs, workers = self.workers)
+
     def notify_slack(self, message):
         try:
             params = dict(text = message)
@@ -89,7 +92,11 @@ class Coordinator:
 
         job = self.jobs[worker_id]
         self.notify_slack("FAILED: " + self.job_str(job))
-        self.queue.append(dict(job_id = job["job_id"], params = job["params"])) # Only put the params back
+        if not job["failed"]:
+            self.queue.append(dict(
+                job_id = job["job_id"],
+                params = job["params"],
+                failed = True)) # Only put the params back
         print("%s failed" % worker_id)
 
     def check_in(self, hostname, worker_id, job_id, memory):
@@ -179,6 +186,8 @@ def slack_command():
     C.status_check()
     if request.form["text"] == "help":
         return "https://github.com/nibrivia/rotorsim"
+    if request.form["text"] == "status":
+        return C.status()
     tokens = request.form["text"].split()
     params = dict(zip(tokens[::2], tokens[1::2]))
     job_id = C.add_job(params)
