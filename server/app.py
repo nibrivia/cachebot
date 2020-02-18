@@ -2,7 +2,7 @@ from flask import Flask, request, url_for
 from secrets import notify_url
 import json, requests, time
 import uuid
-#from wekzeug.utils import secure_filename
+from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 class Coordinator:
@@ -42,7 +42,7 @@ class Coordinator:
         # Avoid doing this too often
         if time.time() - self.last_status_check < 1:
             return
-        print("status check")
+        #print("status check")
         self.last_status_check = time.time()
 
         to_remove = []
@@ -59,7 +59,7 @@ class Coordinator:
 
     def worker_active(self, worker_id):
         if worker_id not in self.workers:
-            self.workers[worker_id] = dict(last_check_in = 0)
+            self.workers[worker_id] = dict()
         self.workers[worker_id]["last-check-in"] = time.time()
 
         self.status_check()
