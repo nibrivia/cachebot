@@ -1,9 +1,11 @@
 from flask import Flask, request, url_for
 from secrets import notify_url
-import json, requests, time
+import json, requests, time, os
 import uuid
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
+#ALLOWED_EXTENSIONS = {'csv'}
+UPLOAD_FOLDER = "/home/nibr/rotorsim/data/"
 
 class Coordinator:
     def __init__(self):
@@ -18,6 +20,7 @@ class Coordinator:
     def add_job(self, params):
         self.status_check()
         job_id = str(uuid.uuid4())
+        params["uuid"] = job_id
         self.queue.append(dict(
             params = params,
             job_id = job_id))
@@ -84,6 +87,7 @@ class Coordinator:
 
         print("%s done" % worker_id)
         del self.jobs[worker_id]
+        return job["job_id"]
 
     def job_failed(self, worker_id):
         # We might be asked to fail jobs we don't have
@@ -146,8 +150,8 @@ class Coordinator:
 
 C = Coordinator()
 C.add_job(dict(
-    time_limit = 30,
-    n_tor      = 129,
+    time_limit = 3,
+    n_tor      = 65,
     n_switches = 37,
     n_cache    = 16,
     n_xpand    =  5,
@@ -178,10 +182,10 @@ with app.test_request_context():
 
 @app.route("/job-done", methods=['POST'])
 def job_done():
-    C.worker_done(**request.form)
-    if False:
-        f = request.files['upload']
-        f.save('data/' + secure_filename(f.filename))
+    job_id = C.worker_done(**request.form)
+    print(request.files)
+    f = request.files['result']
+    f.save(os.path.join(UPLOAD_FOLDER, secure_filename(str(job_id) + ".csv")))
     return 'OK'
 
 @app.route("/slack-command", methods=['POST'])
