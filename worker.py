@@ -113,7 +113,8 @@ def worker_exit(f):
 
 def update_sif():
     """This will be run everytime, re-run the singularity def file if need be"""
-    p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def", shell = True)
+    p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def",
+            stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL, shell = True)
     if p.returncode != 0:
         # Needs refreshing
         # Download file and try again
@@ -121,11 +122,14 @@ def update_sif():
         return False
     return True
 
-def check_install():
+def check_install(sim_dir = "/home/nibr/sim-worker/"):
     """Make sure everything works, or die trying"""
     # Check if this is a directory first, clone if need be
-    # Make this not username depndent
-    os.chdir("/home/nibr/sim-worker/")
+    # TODO Make this not username depndent
+    if not os.path.isdir(sim_dir):
+        subprocess.run(["git", "clone", "https://github.com/nibrivia/rotorsim", sim_dir])
+
+    os.chdir(sim_dir)
 
     # Check .sif
     if not update_sif():
