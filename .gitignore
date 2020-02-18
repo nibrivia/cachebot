@@ -2,3 +2,4 @@
 venv
 *.pyc
 Session.vim
+static/netsim.sif
