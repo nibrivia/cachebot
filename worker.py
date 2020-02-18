@@ -115,9 +115,22 @@ def update_sif(retry_ok=True):
     """This will be run everytime, re-run the singularity def file if need be"""
 
     # Check that the local .sif and our def match up
+    print("check singularity installed... ", end = "", flush = True)
+    try:
+        p = subprocess.run("singularity --version".split())
+        if p.returncode == 0:
+            print("\033[0;32mOK\033[0;0m")
+        else:
+            raise Exception
+    except:
+        print("\033[0;31mFAIL\033[0;0m")
+        return False
+
+
     print("check netsim.sif... ", end = "", flush = True)
-    p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def",
-            stderr = subprocess.DEVNULL, shell = True)
+    # TODO find an actual check
+    #p = subprocess.run("singularity inspect --deffile netsim.sif | diff -B - netsim.def",
+    #        stderr = subprocess.DEVNULL, shell = True)
 
     # Yup, we're done!
     if p.returncode == 0:
