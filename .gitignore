@@ -1,6 +1,6 @@
 secrets.py
 *.swp
-venv
+venv*
 *.pyc
 Session.vim
 netsim.sif
