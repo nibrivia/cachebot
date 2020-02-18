@@ -31,8 +31,8 @@ class Worker:
         args = " ".join(["--%s %s" % (k, v) for k, v in job["params"].items()]).split()
 
         # Run it
-        #proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
-        proc = subprocess.Popen(["sleep", "5"])
+        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
+        #proc = subprocess.Popen(["sleep", "5"])
 
         # Get some info, will be useful later
         pid = proc.pid
@@ -46,7 +46,11 @@ class Worker:
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
+                children = ps.children(recursive = True)
+                if children:
+                    ps = children[-1]
                 memory_usage = ps.memory_info().rss
+                #print(ps.memory_full_info())
                 resp = requests.post(
                         SERVER + "/check-in",
                         data = dict(**self.worker_params,
@@ -117,7 +121,7 @@ def update_sif(retry_ok=True):
     # Check that the local .sif and our def match up
     print("check singularity installed... ", end = "", flush = True)
     try:
-        p = subprocess.run("singularity --version".split())
+        p = subprocess.run("singularity --version".split(), stdout = subprocess.DEVNULL)
         if p.returncode == 0:
             print("\033[0;32mOK\033[0;0m")
         else:
@@ -133,7 +137,7 @@ def update_sif(retry_ok=True):
     #        stderr = subprocess.DEVNULL, shell = True)
 
     # Yup, we're done!
-    if p.returncode == 0:
+    if os.path.isfile("netsim.sif"):
         print("\033[0;32mOK\033[0;0m")
         return True
 
@@ -146,7 +150,7 @@ def update_sif(retry_ok=True):
             cmd = "wget %s/static/netsim.sif" % SERVER
             print(cmd)
             subprocess.run(cmd.split())
-            print("\033[0;32mOK\033[0;0m")
+            print("\033[0;32mOK, retry\033[0;0m")
             return update_sif(retry_ok = False) # try again, but don't recurse
         except Exception as e:
             print(e)
