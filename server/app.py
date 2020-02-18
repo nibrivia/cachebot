@@ -91,13 +91,16 @@ class Coordinator:
             return
 
         job = self.jobs[worker_id]
-        self.notify_slack("FAILED: " + self.job_str(job))
-        if not job["failed"]:
+        print("%s failed" % worker_id)
+        if "failed" in job:
+            print("%s has already been rescheduled, aborting" % worker_id)
+            self.notify_slack("FAILED after 1 retry: " + self.job_str(job))
+        else:
             self.queue.append(dict(
                 job_id = job["job_id"],
                 params = job["params"],
-                failed = True)) # Only put the params back
-        print("%s failed" % worker_id)
+                failed = True)) # Only put the job back
+        del self.jobs[worker_id]
 
     def check_in(self, hostname, worker_id, job_id, memory):
         worker_id = hostname + worker_id
