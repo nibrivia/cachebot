@@ -102,9 +102,6 @@ def check_in():
     C.check_in(**request.form)
     return 'OK'
 
-# TODO generate and make .sif available
-#@app.route("/get-sif")
-
 with app.test_request_context():
     url_for('static', filename="netsim.sif")
 
