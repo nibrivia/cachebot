@@ -26,6 +26,7 @@ class Worker:
 
     def run_job(self, job):
         """This functions deals with all the logistics of actually running a job"""
+        job_id = job["job_id"]
 
         # Named args need pasting and splitting
         baseline = ["singularity", "run", "netsim.sif"]
@@ -65,17 +66,24 @@ class Worker:
                         )
             if resp.text != "OK":
                 print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
-                sys.exit(-1)
+                try:
+                    proc.kill()
+                except:
+                    pass
+                return
 
 
         # DONE, upload results
-        resp = requests.post(SERVER + "/job-done",
+        resp = requests.post(
+                SERVER + "/job-done",
                 data = dict(**self.worker_params,
-                            return_code = r))
+                            return_code = r),
+                files = dict(result = str(job_id)+".csv")
+                )
         if resp.text != "OK":
             print(resp.text)
-            print("Server responded %s, exiting" % resp.text)
-            sys.exit(-1)
+            print("Server responded something weird... stopping job\nServer response:\n%s" % resp.text)
+            return
 
 
 
