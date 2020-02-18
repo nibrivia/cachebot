@@ -183,7 +183,6 @@ with app.test_request_context():
 @app.route("/job-done", methods=['POST'])
 def job_done():
     job_id = C.worker_done(**request.form)
-    print(request.files)
     f = request.files['result']
     f.save(os.path.join(UPLOAD_FOLDER, secure_filename(str(job_id) + ".csv")))
     return 'OK'

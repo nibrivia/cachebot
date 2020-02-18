@@ -198,4 +198,4 @@ if __name__ == "__main__":
         print("setup didn't check out, aborting")
         sys.exit(-1)
 
-    local_coordinator(max_jobs = 2)
+    local_coordinator(max_jobs = N_CPUS-1)
