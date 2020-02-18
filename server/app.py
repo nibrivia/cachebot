@@ -31,7 +31,7 @@ class Coordinator:
         return (hostname, worker_id)
 
     def status(self):
-        return dict(queue = self.queue, jobs = self.jobs, workers = self.workers)
+        return dict(queue = len(self.queue), jobs = len(self.jobs), workers = len(self.workers))
 
     def notify_slack(self, message):
         try:
@@ -79,14 +79,13 @@ class Coordinator:
         self.worker_active(worker_id)
         job = self.jobs[worker_id]
 
-        # Notify slack
-        self.notify_slack(self.job_str(job))
 
         if int(return_code) != 0:
             self.job_failed(worker_id)
-
-        print("%s done" % worker_id)
-        del self.jobs[worker_id]
+        else:
+            # Notify slack
+            self.notify_slack(self.job_str(job))
+            del self.jobs[worker_id]
         return job["job_id"]
 
     def job_failed(self, worker_id):
@@ -98,8 +97,9 @@ class Coordinator:
         print("%s failed" % worker_id)
         if "failed" in job:
             print("%s has already been rescheduled, aborting" % worker_id)
-            self.notify_slack("FAILED after 1 retry: " + self.job_str(job))
+            self.notify_slack("FAILED after 1 retry on %s: %s" % (worker_id, self.job_str(job)))
         else:
+            self.notify_slack("FAILED on %s: %s" % (worker_id, self.job_str(job)))
             self.queue.append(dict(
                 job_id = job["job_id"],
                 params = job["params"],
