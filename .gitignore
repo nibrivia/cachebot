@@ -4,3 +4,4 @@ venv*
 *.pyc
 Session.vim
 netsim.sif
+nohup*
