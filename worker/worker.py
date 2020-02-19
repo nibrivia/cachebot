@@ -7,8 +7,8 @@ import socket
 import multiprocessing
 N_CPUS   = multiprocessing.cpu_count()
 HOSTNAME = socket.gethostname()
-SERVER   = "http://cambridge.csail.mit.edu:5000"
-#SERVER   = "http://localhost:5000"
+#SERVER   = "http://cambridge.csail.mit.edu:5000"
+SERVER   = "http://localhost:5000"
 
 class Worker:
     def __init__(self, worker_id, hostname):
@@ -74,16 +74,24 @@ class Worker:
 
 
         # DONE, upload results
-        resp = requests.post(
-                SERVER + "/job-done",
-                data = dict(**self.worker_params,
-                            return_code = r),
-                files = dict(result = str(job_id)+".csv")
-                )
-        if resp.text != "OK":
-            print(resp.text)
-            print("Server responded something weird... stopping job\nServer response:\n%s" % resp.text)
-            return
+        try:
+            output_fn = "simulator/done-%s.csv" % job_id
+            with open(output_fn) as out_f:
+                resp = requests.post(
+                        SERVER + "/job-done",
+                        data = dict(**self.worker_params,
+                                    return_code = r),
+                        files = dict(result = out_f)
+                        )
+
+            if resp.text != "OK":
+                print(resp.text)
+                print("Server responded something weird... stopping job\nServer response:\n%s" % resp.text)
+                return
+        except:
+            # Something failed, regardless, don't do anything
+            # server might assign us another job, but it'll detect the failure
+            pass
 
 
 
@@ -125,7 +133,6 @@ def local_coordinator(max_jobs):
 
 def worker_exit(f):
     """Gets called on a worker terminating, tries to determine the cause and emails out??"""
-    # TODO email out
     print("A worker terminated...")
     print(f.result())
 
