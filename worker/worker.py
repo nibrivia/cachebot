@@ -7,8 +7,7 @@ import socket
 import multiprocessing
 N_CPUS   = multiprocessing.cpu_count()
 HOSTNAME = socket.gethostname()
-#SERVER   = "http://cambridge.csail.mit.edu:5000"
-SERVER   = "http://localhost:5000"
+SERVER   = "https://cachebot.csail.mit.edu"
 
 class Worker:
     def __init__(self, worker_id, hostname):
