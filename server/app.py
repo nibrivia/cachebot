@@ -84,7 +84,7 @@ class Coordinator:
             self.job_failed(worker_id)
         else:
             # Notify slack
-            self.notify_slack(self.job_str(job))
+            #self.notify_slack(self.job_str(job))
             del self.jobs[worker_id]
         return job["job_id"]
 
@@ -184,7 +184,7 @@ with app.test_request_context():
 def job_done():
     job_id = C.worker_done(**request.form)
     f = request.files['result']
-    f.save(os.path.join(UPLOAD_FOLDER, secure_filename(str(job_id) + ".csv")))
+    f.save(os.path.join(UPLOAD_FOLDER, secure_filename("done-" + str(job_id) + ".csv")))
     return 'OK'
 
 @app.route("/slack-command", methods=['POST'])
