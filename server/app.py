@@ -30,8 +30,11 @@ class Coordinator:
     def internal_worker_id(self, hostname, worker_id):
         return (hostname, worker_id)
 
-    def status(self):
-        return dict(queue = len(self.queue), jobs = len(self.jobs), workers = len(self.workers))
+    def status(self, raw = False):
+        status = dict(queue = self.queue, jobs = self.jobs, workers = self.workers)
+        if not raw:
+            return {k: len(v) for k, v in status.items()}
+        return status
 
     def notify_slack(self, message):
         try:
@@ -62,6 +65,7 @@ class Coordinator:
 
     def worker_active(self, worker_id):
         if worker_id not in self.workers:
+            self.notify_slack("%s came online :)" % worker_id)
             self.workers[worker_id] = dict()
         self.workers[worker_id]["last-check-in"] = time.time()
 
@@ -161,7 +165,7 @@ C.add_job(dict(
 @app.route('/')
 def hello_world():
     C.status_check()
-    return "You probably shouldn't be here, go away..."
+    return C.status(raw = True)
 
 @app.route("/submit-job", methods = ['POST'])
 def submit_job():
