@@ -142,7 +142,7 @@ class Coordinator:
             self.job_failed(worker_id)
 
         # Nothing to do, we're done
-        if len(self.queue) > 0:
+        if len(self.queue) == 0:
             return dict(wait = self.check_in_period)
 
         # Assign new job
