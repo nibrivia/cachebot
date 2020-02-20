@@ -18,7 +18,7 @@ class Coordinator:
 
     @property
     def check_in_period(self):
-        return len(self.workers)/20
+        return max(len(self.workers)/20, 1)
 
     def add_job(self, params):
         self.status_check()

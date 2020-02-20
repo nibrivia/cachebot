@@ -66,7 +66,7 @@ class Worker:
                         )
             try:
                 if "wait" in resp.json():
-                    timeout = float(resp.json["wait"])
+                    timeout = float(resp.json()["wait"])
             except:
                 if resp.text != "OK":
                     print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
@@ -116,16 +116,16 @@ class Worker:
                 # Got a job, do it
                 job = response.json()["job"]
                 self.run_job(job)
+                time.sleep(3)
             else:
                 # Wait and try again
                 try:
-                    wait_time = int(response.json()["wait"])
+                    wait_time = float(response.json()["wait"])
                     time.sleep(wait_time)
                 except:
                     time.sleep(5)
 
             # This guarantees we at least wait 1s between requests
-            time.sleep(1)
 
 def local_coordinator(max_jobs):
     """Starts local workers and catches them when they fail"""
@@ -133,6 +133,7 @@ def local_coordinator(max_jobs):
     with concurrent.futures.ProcessPoolExecutor(max_workers = max_jobs) as executor:
         for i, w in enumerate(workers):
             f = executor.submit(workers[i].start)
+            time.sleep(.1) # Avoid coordinated start
             f.add_done_callback(worker_exit)
 
 def worker_exit(f):
