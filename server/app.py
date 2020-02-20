@@ -147,7 +147,7 @@ class Coordinator:
 
         # Assign new job
         self.count += 1
-        job = self.queue.pop_left()
+        job = self.queue.popleft()
         job["start"]     = time.time()
         job["hostname"]  = hostname
         job["worker_id"] = worker_id
