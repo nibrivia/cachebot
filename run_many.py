@@ -33,7 +33,7 @@ def run_experiments(p_space):
     for params in gen_params(param_space):
         param_str = " ".join("%s %s" % i for i in params.items())
         print(param_str)
-        requests.post("http://cambridge.csail.mit.edu:5000/slack-command", data = dict(text = param_str))
+        requests.post("https://cachebot.csail.mit.edu/slack-command", data = dict(text = param_str))
 
 params_drain = dict(
         time_limit = [1000],
@@ -88,12 +88,19 @@ params_ml_xpand = {**params_ml,
         'n_cache' : [0]
         }
 
-params_256 = dict(
+params_256_r = dict(
         n_tor      = [256],
         n_switches = [37],
         n_xpand    = [5],
-        n_cache    = [0, 16]
+        n_cache    = [i for i in range(32)]
         )
+params_256_x = dict(
+        n_tor      = [256],
+        n_switches = [37],
+        n_xpand    = [37],
+        n_cache    = [0]
+        )
+
 params_128 = dict(
         n_tor      = [128],
         n_switches = [21],
@@ -107,16 +114,16 @@ params_96 = dict(
         n_cache    = [0, 6]
         )
                 
+N_LEVELS = 20
 params_datamining = dict(
-        time_limit = [10000],
+        time_limit = [20000],
         workload   = ["datamining"],
-        load       = [i/10 for i in range(1,10)]
+        load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
         )
 
 
-run_experiments({**params_datamining, **params_256})
-run_experiments({**params_datamining, **params_128})
-run_experiments({**params_datamining, **params_96 })
+run_experiments({**params_datamining, **params_256_r})
+run_experiments({**params_datamining, **params_256_x})
 
 
 print("done")
