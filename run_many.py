@@ -116,8 +116,8 @@ params_96 = dict(
                 
 N_LEVELS = 20
 params_datamining = dict(
-        time_limit = [20000],
-        workload   = ["datamining"],
+        time_limit = [2000],
+        workload   = ["chen"],
         load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
         )
 
