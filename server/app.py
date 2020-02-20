@@ -1,6 +1,7 @@
 from flask import Flask, request, url_for
 from secrets import notify_url
 import json, requests, time, os
+from collections import deque
 import uuid
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
@@ -10,7 +11,7 @@ UPLOAD_FOLDER = "/home/nibr/rotorsim/data/"
 class Coordinator:
     def __init__(self):
         self.count = 0
-        self.queue = []
+        self.queue = deque()
         self.jobs    = dict()
         self.workers = dict()
 
@@ -141,12 +142,12 @@ class Coordinator:
             self.job_failed(worker_id)
 
         # Nothing to do, we're done
-        if not self.queue:
+        if len(self.queue) > 0:
             return dict(wait = self.check_in_period)
 
         # Assign new job
         self.count += 1
-        job = self.queue.pop(0)
+        job = self.queue.pop_left()
         job["start"]     = time.time()
         job["hostname"]  = hostname
         job["worker_id"] = worker_id
