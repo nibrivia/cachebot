@@ -15,7 +15,10 @@ class Coordinator:
         self.workers = dict()
 
         self.last_status_check = 0
-        self.check_in_period   = 4
+
+    @property
+    def check_in_period(self):
+        return len(self.workers)/20
 
     def add_job(self, params):
         self.status_check()
@@ -58,14 +61,15 @@ class Coordinator:
 
         for inactive_id in to_remove:
             print(inactive_id, "inactive")
-            self.notify_slack("Worker %s has gone silent" % inactive_id)
             self.job_failed(inactive_id)
             del self.workers[inactive_id]
+        if to_remove:
+            self.notify_slack("%d worker(s) down" % (len(to_remove)))
 
 
     def worker_active(self, worker_id):
         if worker_id not in self.workers:
-            self.notify_slack("%s came online :)" % worker_id)
+            #self.notify_slack("%s came online :)" % worker_id)
             self.workers[worker_id] = dict()
         self.workers[worker_id]["last-check-in"] = time.time()
 
@@ -125,7 +129,7 @@ class Coordinator:
         job["memory"] = float(memory)
         job["last-check-in"] = time.time()
 
-        return "OK"
+        return dict(wait = self.check_in_period)
 
 
     def get_job(self, hostname, worker_id):
@@ -138,7 +142,7 @@ class Coordinator:
 
         # Nothing to do, we're done
         if not self.queue:
-            return dict(wait = 4)
+            return dict(wait = self.check_in_period)
 
         # Assign new job
         self.count += 1
@@ -177,8 +181,7 @@ def get_job():
 
 @app.route("/check-in", methods=['POST'])
 def check_in():
-    C.check_in(**request.form)
-    return 'OK'
+    return C.check_in(**request.form)
 
 with app.test_request_context():
     url_for('static', filename="netsim.sif")

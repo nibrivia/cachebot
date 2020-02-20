@@ -41,9 +41,10 @@ class Worker:
         print("%s: [%d] " % (self.worker_id, pid) + " ".join(baseline+args))
 
         # Wait and do check-ins
+        timeout = 2
         while True:
             try:
-                r = proc.wait(timeout = 2)
+                r = proc.wait(timeout = timeout)
                 print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
                 break
             except:
@@ -63,13 +64,17 @@ class Worker:
                                 job_id = job["job_id"],
                                 memory = memory_usage)
                         )
-            if resp.text != "OK":
-                print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
-                try:
-                    proc.kill()
-                except:
-                    pass
-                return
+            try:
+                if "wait" in resp.json():
+                    timeout = float(resp.json["wait"])
+            except:
+                if resp.text != "OK":
+                    print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
+                    try:
+                        proc.kill()
+                    except:
+                        pass
+                    return
 
 
         # DONE, upload results
