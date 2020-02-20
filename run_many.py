@@ -92,7 +92,7 @@ params_256_r = dict(
         n_tor      = [256],
         n_switches = [37],
         n_xpand    = [5],
-        n_cache    = [i for i in range(32)]
+        n_cache    = [i*2 for i in range(16)]
         )
 params_256_x = dict(
         n_tor      = [256],
@@ -122,8 +122,8 @@ params_datamining = dict(
         )
 
 
-run_experiments({**params_datamining, **params_256_r})
 run_experiments({**params_datamining, **params_256_x})
+run_experiments({**params_datamining, **params_256_r})
 
 
 print("done")
