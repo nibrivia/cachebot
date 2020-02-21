@@ -16,13 +16,6 @@ class Worker:
 
         self.worker_params = dict(worker_id = worker_id, hostname = hostname)
 
-    def send_req(self, path):
-        resp = requests.post(SERVER + "/check-in", data = self.worker_params)
-        if resp.text != "OK":
-            print("%s: Server responded %s, exiting" % (self.worker_id, resp.text))
-            sys.exit(-1)
-
-
     def run_job(self, job):
         """This functions deals with all the logistics of actually running a job"""
         job_id = job["job_id"]
@@ -38,14 +31,14 @@ class Worker:
         # Get some info, will be useful later
         pid = proc.pid
         ps  = psutil.Process(pid)
-        print("%s: [%d] " % (self.worker_id, pid) + " ".join(baseline+args))
+        print("%s: [%d] {%s}" % (self.worker_id, pid, job_id) + " ".join(baseline+args))
 
         # Wait and do check-ins
         timeout = 2
         while True:
             try:
                 r = proc.wait(timeout = timeout)
-                print("%s: [%d] done, return code %s" % (self.worker_id, pid, r))
+                print("%s: [%d] {%s} done, return code %s" % (self.worker_id, pid, job_id, r))
                 break
             except:
                 pass # Ignore the exception
@@ -80,6 +73,12 @@ class Worker:
         # DONE, upload results
         try:
             output_fn = "simulator/done-%s.csv" % job_id
+            resp = requests.post(SERVER + "/start-upload",
+                    data = dict(**self.worker_params))
+            if resp.text != 'OK':
+                print("Server responded weird to upload...\n%s" % resp.text)
+                return
+
             with open(output_fn) as out_f:
                 resp = requests.post(
                         SERVER + "/job-done",
@@ -92,9 +91,11 @@ class Worker:
                 print(resp.text)
                 print("Server responded something weird... stopping job\nServer response:\n%s" % resp.text)
                 return
-        except:
+        except Exception as e:
+            print(e)
             # Something failed, regardless, don't do anything
             # server might assign us another job, but it'll detect the failure
+            print("something weird happened, last server response:\n%s" % resp.text)
             pass
 
 
@@ -126,6 +127,7 @@ class Worker:
                     time.sleep(5)
 
             # This guarantees we at least wait 1s between requests
+            time.sleep(1)
 
 def local_coordinator(max_jobs):
     """Starts local workers and catches them when they fail"""
