@@ -84,7 +84,7 @@ class Worker:
                         SERVER + "/job-done",
                         data = dict(**self.worker_params,
                                     return_code = r),
-                        files = dict(result = out_f)
+                        #files = dict(result = out_f)
                         )
 
             if resp.text != "OK":
