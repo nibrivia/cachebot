@@ -19,6 +19,7 @@ class Coordinator:
         self.jobs    = dict()
 
         self.last_status_check = 0
+        self.last_job_assigned = dict()
 
     @property
     def check_in_period(self):
@@ -178,9 +179,13 @@ class Coordinator:
 
         # Should not already be running something
         if worker_id in self.jobs:
-            self.job_failed(worker_id, "Worker requested new work")
+            self.job_failed(worker_id, "Worker requested new work?")
 
         if self.queue.empty():
+            return dict(wait = self.check_in_period)
+
+        host_last_assigned = self.last_job_assigned.get(hostname, 0)
+        if time.time() - host_last_assigned < 1:
             return dict(wait = self.check_in_period)
 
         try:
@@ -188,6 +193,7 @@ class Coordinator:
             job = self.queue.get()
         except:
             # Nothing to do, we're done
+            print("no jobs left")
             return dict(wait = self.check_in_period)
 
         # Assign new job
@@ -199,6 +205,7 @@ class Coordinator:
         assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
 
         self.jobs[worker_id] = dict(**job, memory = 0)
+        self.last_job_assigned[hostname] = time.time()
         job["last-check-in"] = time.time()
 
         print("queueing %s on %s" % (job["job_id"], worker_id))

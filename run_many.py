@@ -114,8 +114,13 @@ params_96 = dict(
         n_cache    = [0, 6]
         )
 
-N_LEVELS = 20
+N_LEVELS = 10
 params_datamining = dict(
+        time_limit = [10000],
+        workload   = ["datamining"],
+        load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
+        )
+params_chen = dict(
         time_limit = [1000],
         workload   = ["chen"],
         load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
@@ -123,7 +128,7 @@ params_datamining = dict(
 
 
 run_experiments({**params_datamining, **params_256_x})
-run_experiments({**params_datamining, **params_256_r})
+run_experiments({**params_chen,       **params_256_x})
 
 
 print("done")
