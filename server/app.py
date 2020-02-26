@@ -15,9 +15,7 @@ class Coordinator:
         self.queue = Queue()
         self.workers = dict()
 
-        self.lock = Lock()
 
-        self.lock_jobs = RLock()
         self.jobs    = dict()
 
         self.last_status_check = 0
@@ -76,33 +74,25 @@ class Coordinator:
         # Avoid doing this too often
         if time.time() - self.last_status_check < 10:
             return
-        self.lock.acquire()
-        self.lock_jobs.acquire()
         if time.time() - self.last_status_check < 10:
             return
         #print("status check")
-        try:
-            self.last_status_check = time.time()
+        self.last_status_check = time.time()
 
-            to_remove = []
-            for worker, status in self.workers.items():
-                if time.time() - status["last-check-in"] > max(self.check_in_period * 3.2, 60):
-                    # Skip if we're uploading
-                    if worker in self.jobs and "uploading" in self.jobs[worker]:
-                        continue
-                    to_remove.append(worker)
+        to_remove = []
+        for worker, status in self.workers.items():
+            if time.time() - status["last-check-in"] > max(self.check_in_period * 3.2, 60):
+                # Skip if we're uploading
+                if worker in self.jobs and "uploading" in self.jobs[worker]:
+                    continue
+                to_remove.append(worker)
 
-            for inactive_id in to_remove:
-                print(inactive_id, "inactive")
-                self.job_failed(inactive_id, "inactive")
-                del self.workers[inactive_id]
-            if to_remove:
-                self.notify_slack("%d worker(s) down" % (len(to_remove)))
-        except Exception as e:
-            print(e)
-        finally:
-            self.lock.release()
-            self.lock_jobs.release()
+        for inactive_id in to_remove:
+            print(inactive_id, "inactive")
+            self.job_failed(inactive_id, "inactive")
+            del self.workers[inactive_id]
+        if to_remove:
+            self.notify_slack("%d worker(s) down" % (len(to_remove)))
 
 
     def worker_active(self, worker_id, hostname):
@@ -124,27 +114,20 @@ class Coordinator:
     def start_upload(self, hostname, worker_id):
         worker_id = hostname + worker_id
         self.worker_active(worker_id, hostname)
-        self.lock_jobs.acquire()
-        try:
-            self.jobs[worker_id]["uploading"] = True
-        finally:
-            self.lock_jobs.release()
+        self.jobs[worker_id]["uploading"] = True
         return 'OK'
 
     def worker_done(self, hostname, worker_id, return_code):
         worker_id = hostname + worker_id
         self.worker_active(worker_id, hostname)
-        self.lock_jobs.acquire()
-        try:
-            job = self.jobs[worker_id]
+
+        job = self.jobs[worker_id]
 
 
-            if int(return_code) != 0:
-                self.job_failed(worker_id, "non-zero return code")
-            else:
-                del self.jobs[worker_id]
-        finally:
-            self.lock_jobs.release()
+        if int(return_code) != 0:
+            self.job_failed(worker_id, "non-zero return code")
+        else:
+            del self.jobs[worker_id]
 
         # Notify slack
         if len(self.jobs) == 0:
@@ -154,45 +137,37 @@ class Coordinator:
 
     def job_failed(self, worker_id, reason):
         # We might be asked to fail jobs we don't have
-        self.lock_jobs.acquire()
-        try:
-            if worker_id not in self.jobs:
-                return
+        if worker_id not in self.jobs:
+            return
 
-            job = self.jobs[worker_id]
-            print("%s failed (%s)" % (worker_id, reason))
-            if "failed" in job:
-                print("%s has already been rescheduled, aborting" % worker_id)
-                self.notify_slack("FAILED after 1 retry on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
-            else:
-                self.notify_slack("FAILED on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
-                assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
-                self.queue.put(dict(
-                    job_id = job["job_id"],
-                    params = dict(**job["params"]),
-                    failed = True)) # Only put the job back
-            del self.jobs[worker_id]
-        finally:
-            self.lock_jobs.release()
+        job = self.jobs[worker_id]
+        print("%s failed (%s)" % (worker_id, reason))
+        if "failed" in job:
+            print("%s has already been rescheduled, aborting" % worker_id)
+            self.notify_slack("FAILED after 1 retry on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
+        else:
+            self.notify_slack("FAILED on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
+            assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
+            self.queue.put(dict(
+                job_id = job["job_id"],
+                params = dict(**job["params"]),
+                failed = True)) # Only put the job back
+        del self.jobs[worker_id]
 
     def check_in(self, hostname, worker_id, job_id, memory):
         worker_id = hostname + worker_id
         self.worker_active(worker_id, hostname)
 
         # They should exist
-        self.lock_jobs.acquire()
-        try:
-            assert worker_id in self.jobs, self.jobs
+        assert worker_id in self.jobs, self.jobs
 
-            # The job ids should match
-            job = self.jobs[worker_id]
-            assert job["job_id"] == job_id, \
-                    "Got <%s>, expected <%s>" % (job_id, job["job_id"])
+        # The job ids should match
+        job = self.jobs[worker_id]
+        assert job["job_id"] == job_id, \
+                "Got <%s>, expected <%s>" % (job_id, job["job_id"])
 
-            job["memory"] = float(memory)
-            job["last-check-in"] = time.time()
-        finally:
-            self.lock_jobs.release()
+        job["memory"] = float(memory)
+        job["last-check-in"] = time.time()
 
         return dict(wait = self.check_in_period)
 
@@ -202,33 +177,29 @@ class Coordinator:
         self.worker_active(worker_id, hostname)
 
         # Should not already be running something
-        self.lock_jobs.acquire()
+        if worker_id in self.jobs:
+            self.job_failed(worker_id, "Worker requested new work")
+
+        if self.queue.empty():
+            return dict(wait = self.check_in_period)
+
         try:
-            if worker_id in self.jobs:
-                self.job_failed(worker_id, "Worker requested new work")
+            # Try to get job, raises exception if empty
+            job = self.queue.get()
+        except:
+            # Nothing to do, we're done
+            return dict(wait = self.check_in_period)
 
-            if self.queue.empty():
-                return dict(wait = self.check_in_period)
+        # Assign new job
+        self.count += 1
 
-            try:
-                # Try to get job, raises exception if empty
-                job = self.queue.get()
-            except:
-                # Nothing to do, we're done
-                return dict(wait = self.check_in_period)
+        job["start"]     = time.time()
+        job["hostname"]  = hostname
+        job["worker_id"] = worker_id
+        assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
 
-            # Assign new job
-            self.count += 1
-
-            job["start"]     = time.time()
-            job["hostname"]  = hostname
-            job["worker_id"] = worker_id
-            assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
-
-            self.jobs[worker_id] = dict(**job, memory = 0)
-            job["last-check-in"] = time.time()
-        finally:
-            self.lock_jobs.release()
+        self.jobs[worker_id] = dict(**job, memory = 0)
+        job["last-check-in"] = time.time()
 
         print("queueing %s on %s" % (job["job_id"], worker_id))
         return dict(job = job)

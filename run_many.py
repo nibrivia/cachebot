@@ -114,9 +114,9 @@ params_96 = dict(
         n_cache    = [0, 6]
         )
 
-N_LEVELS = 15
+N_LEVELS = 20
 params_datamining = dict(
-        time_limit = [3],
+        time_limit = [1000],
         workload   = ["chen"],
         load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
         )
