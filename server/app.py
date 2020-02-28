@@ -221,8 +221,7 @@ start_job =  dict(
     workload   = "chen"
     )
 
-for i in range(20):
-    C.add_job(start_job)
+C.add_job(start_job)
 
 @app.route('/')
 def hello_world():
