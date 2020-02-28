@@ -264,5 +264,8 @@ def slack_command():
         return C.status()
     tokens = request.form["text"].split()
     params = dict(zip(tokens[::2], tokens[1::2]))
+    for k, v in params.items():
+        if v == "flag":
+            params[k] = ""
     job_id = C.add_job(params)
     return 'Queued with id `%s`' % job_id

@@ -92,7 +92,7 @@ params_256_r = dict(
         n_tor      = [256],
         n_switches = [37],
         n_xpand    = [5],
-        n_cache    = [i*2 for i in range(16)]
+        n_cache    = [0, 16, 26, 28]
         )
 params_256_x = dict(
         n_tor      = [256],
@@ -125,10 +125,15 @@ params_chen = dict(
         workload   = ["chen"],
         load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
         )
+params_skew = dict(
+        skewed = ["flag"],
+        )
 
 
-run_experiments({**params_datamining, **params_256_x})
-run_experiments({**params_chen,       **params_256_x})
+run_experiments({**params_datamining, **params_256_x, **params_skew})
+run_experiments({**params_chen,       **params_256_x, **params_skew})
+run_experiments({**params_datamining, **params_256_r, **params_skew})
+run_experiments({**params_chen,       **params_256_r, **params_skew})
 
 
 print("done")
