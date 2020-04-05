@@ -219,7 +219,7 @@ start_job =  dict(
     n_switches = 12,
     n_cache    =  0,
     n_xpand    = 12,
-    workload   = "cheen"
+    workload   = "chen"
     )
 
 C.add_job(start_job)
