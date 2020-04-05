@@ -4,6 +4,7 @@ import json, requests, time, os
 from queue import Queue
 from threading import Lock, RLock
 import uuid
+import random
 from werkzeug.utils import secure_filename
 app = Flask(__name__)
 #ALLOWED_EXTENSIONS = {'csv'}
@@ -118,7 +119,7 @@ class Coordinator:
         self.jobs[worker_id]["uploading"] = True
         return 'OK'
 
-    def worker_done(self, hostname, worker_id, return_code):
+    def worker_done(self, hostname, worker_id, return_code, err = None):
         worker_id = hostname + worker_id
         self.worker_active(worker_id, hostname)
 
@@ -126,7 +127,7 @@ class Coordinator:
 
 
         if int(return_code) != 0:
-            self.job_failed(worker_id, "non-zero return code")
+            self.job_failed(worker_id, "non-zero return code", err)
         else:
             del self.jobs[worker_id]
 
@@ -136,7 +137,7 @@ class Coordinator:
 
         return job["job_id"]
 
-    def job_failed(self, worker_id, reason):
+    def job_failed(self, worker_id, reason, err = None):
         # We might be asked to fail jobs we don't have
         if worker_id not in self.jobs:
             return
@@ -145,9 +146,9 @@ class Coordinator:
         print("%s failed (%s)" % (worker_id, reason))
         if "failed" in job:
             print("%s has already been rescheduled, aborting" % worker_id)
-            self.notify_slack("FAILED after 1 retry on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
+            self.notify_slack("FAILED after 1 retry on %s (%s): %s\n```%s```" % (worker_id, reason, self.job_str(job), err))
         else:
-            self.notify_slack("FAILED on %s (%s): %s" % (worker_id, reason, self.job_str(job)))
+            self.notify_slack("FAILED on %s (%s): %s\n```%s```" % (worker_id, reason, self.job_str(job), err))
             assert job["job_id"] == job["params"]["uuid"], (job["job_id"], job["params"]["uuid"])
             self.queue.put(dict(
                 job_id = job["job_id"],
@@ -170,7 +171,7 @@ class Coordinator:
         job["memory"] = float(memory)
         job["last-check-in"] = time.time()
 
-        return dict(wait = self.check_in_period)
+        return dict(wait = self.check_in_period + random.random())
 
 
     def get_job(self, hostname, worker_id):
@@ -182,11 +183,11 @@ class Coordinator:
             self.job_failed(worker_id, "Worker requested new work?")
 
         if self.queue.empty():
-            return dict(wait = self.check_in_period)
+            return dict(wait = self.check_in_period + random.random())
 
         host_last_assigned = self.last_job_assigned.get(hostname, 0)
         if time.time() - host_last_assigned < 1:
-            return dict(wait = self.check_in_period)
+            return dict(wait = self.check_in_period + random.random())
 
         try:
             # Try to get job, raises exception if empty
@@ -194,7 +195,7 @@ class Coordinator:
         except:
             # Nothing to do, we're done
             print("no jobs left")
-            return dict(wait = self.check_in_period)
+            return dict(wait = self.check_in_period + random.random())
 
         # Assign new job
         self.count += 1
@@ -215,10 +216,10 @@ C = Coordinator()
 start_job =  dict(
     time_limit = 3,
     n_tor      = 65,
-    n_switches = 37,
-    n_cache    = 16,
-    n_xpand    =  5,
-    workload   = "chen"
+    n_switches = 12,
+    n_cache    =  0,
+    n_xpand    = 12,
+    workload   = "cheen"
     )
 
 C.add_job(start_job)

@@ -37,4 +37,4 @@ install:
 	@echo "      nohup make run"
 
 run:
-	bash -c ". venv/bin/activate && git pull && python3 worker.py"
+	bash -c ". venv/bin/activate && git pull && python3 worker.py 2> err.log"

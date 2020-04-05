@@ -25,7 +25,7 @@ class Worker:
         args = " ".join(["--%s %s" % (k, v) for k, v in job["params"].items()]).split()
 
         # Run it
-        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL)
+        proc = subprocess.Popen(baseline + args, stdout = subprocess.DEVNULL, stderr = subprocess.PIPE)
         #proc = subprocess.Popen(["sleep", "5"])
 
         # Get some info, will be useful later
@@ -35,13 +35,21 @@ class Worker:
 
         # Wait and do check-ins
         timeout = 2
+        memory_usage = 0
         while True:
             try:
                 r = proc.wait(timeout = timeout)
-                print("%s: [%d] {%s} done, return code %s" % (self.worker_id, pid, job_id, r))
+                err = proc.stderr.read()
+                print("%s: [%d] {%s} done, return code %s\n%s" % (self.worker_id, pid, job_id, r, err.decode("utf-8")))
+                if r != 0:
+                    print("%s: [%d] {%s} done, return code %s\n%s" % (self.worker_id, pid, job_id, r, err.decode("utf-8")),
+                            file = sys.stderr)
                 break
-            except:
+            except subprocess.TimeoutExpired:
                 pass # Ignore the exception
+            except:
+                print("???")
+                break
 
             try:
                 children = ps.children(recursive = True)
@@ -72,20 +80,21 @@ class Worker:
 
         # DONE, upload results
         try:
-            output_fn = "simulator/done-%s.csv" % job_id
-            resp = requests.post(SERVER + "/start-upload",
-                    data = dict(**self.worker_params))
-            if resp.text != 'OK':
-                print("Server responded weird to upload...\n%s" % resp.text)
-                return
+            #output_fn = "simulator/done-%s.csv" % job_id
+            #resp = requests.post(SERVER + "/start-upload",
+            #        data = dict(**self.worker_params))
+            #if resp.text != 'OK':
+            #    print("Server responded weird to upload...\n%s" % resp.text)
+            #    return
 
-            with open(output_fn) as out_f:
-                resp = requests.post(
-                        SERVER + "/job-done",
-                        data = dict(**self.worker_params,
-                                    return_code = r),
-                        #files = dict(result = out_f)
-                        )
+            #with open(output_fn) as out_f:
+            resp = requests.post(
+                    SERVER + "/job-done",
+                    data = dict(**self.worker_params,
+                                return_code = r,
+                                err = err),
+                    #files = dict(result = out_f)
+                    )
 
             if resp.text != "OK":
                 print(resp.text)
@@ -212,4 +221,4 @@ if __name__ == "__main__":
         print("setup didn't check out, aborting")
         sys.exit(-1)
 
-    local_coordinator(max_jobs = N_CPUS-1)
+    local_coordinator(max_jobs = N_CPUS-2)

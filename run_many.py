@@ -1,4 +1,5 @@
 import requests
+import time
 
 # Generates cartesian product of parameters
 def gen_params(param_space, prefix = ""):
@@ -33,6 +34,7 @@ def run_experiments(p_space):
     for params in gen_params(param_space):
         param_str = " ".join("%s %s" % i for i in params.items())
         print(param_str)
+        time.sleep(.1)
         requests.post("https://cachebot.csail.mit.edu/slack-command", data = dict(text = param_str))
 
 params_drain = dict(
@@ -88,11 +90,30 @@ params_ml_xpand = {**params_ml,
         'n_cache' : [0]
         }
 
+params_17_ro = dict(
+        n_tor      = [17],
+        n_switches = [4],
+        n_xpand    = [0],
+        n_cache    = [0]
+        )
+params_17_xo = dict(
+        n_tor      = [17],
+        n_switches = [4],
+        n_xpand    = [4],
+        n_cache    = [0]
+        )
+params_17_rx = dict(
+        n_tor      = [17],
+        n_switches = [4],
+        n_xpand    = [2],
+        n_cache    = [0]
+        )
+
 params_256_r = dict(
         n_tor      = [256],
         n_switches = [37],
         n_xpand    = [5],
-        n_cache    = [0, 16, 26, 28]
+        n_cache    = [i*2 for i in range(0, 16)]
         )
 params_256_x = dict(
         n_tor      = [256],
@@ -101,12 +122,32 @@ params_256_x = dict(
         n_cache    = [0]
         )
 
-params_128 = dict(
-        n_tor      = [128],
+params_128_r = dict(
+        n_tor      = [129],
         n_switches = [21],
         n_xpand    = [5],
-        n_cache    = [0, 8]
+        n_cache    = [i for i in range(0, 8+1, 2)]
         )
+params_128_x = dict(
+        n_tor      = [129],
+        n_switches = [21],
+        n_xpand    = [21],
+        n_cache    = [0]
+        )
+
+params_65_r = dict(
+        n_tor      = [65],
+        n_switches = [12],
+        n_xpand    = [4],
+        n_cache    = [0, 4]
+        )
+params_65_x = dict(
+        n_tor      = [65],
+        n_switches = [12],
+        n_xpand    = [12],
+        n_cache    = [0]
+        )
+
 params_96 = dict(
         n_tor      = [96],
         n_switches = [17],
@@ -116,8 +157,13 @@ params_96 = dict(
 
 N_LEVELS = 10
 params_datamining = dict(
-        time_limit = [10000],
+        time_limit = [1000],
         workload   = ["datamining"],
+        load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
+        )
+params_olivia = dict(
+        time_limit = [1000],
+        workload   = ["olivia"],
         load       = [i/N_LEVELS for i in range(1,N_LEVELS)]
         )
 params_chen = dict(
@@ -130,10 +176,21 @@ params_skew = dict(
         )
 
 
-run_experiments({**params_datamining, **params_256_x, **params_skew})
-run_experiments({**params_chen,       **params_256_x, **params_skew})
-run_experiments({**params_datamining, **params_256_r, **params_skew})
-run_experiments({**params_chen,       **params_256_r, **params_skew})
+#run_experiments({**params_olivia,     **params_65_r, "cache_policy" : ["rotor"]})
+#run_experiments({**params_olivia,     **params_65_x, "cache_policy" : ["rotor"]})
+run_experiments({**params_datamining, **params_65_r, "cache_policy" : ["rotor"]})
+run_experiments({**params_datamining, **params_65_x, "cache_policy" : ["rotor"]})
+run_experiments({**params_chen,       **params_65_r, "cache_policy" : ["rotor"]})
+run_experiments({**params_chen,       **params_65_x, "cache_policy" : ["rotor"]})
+
+#run_experiments({**params_olivia,     **params_128_r, "cache_policy" : ["rotor"]})
+#run_experiments({**params_olivia,     **params_128_x, "cache_policy" : ["rotor"]})
+run_experiments({**params_datamining, **params_128_r, "cache_policy" : ["rotor"]})
+run_experiments({**params_datamining, **params_128_x, "cache_policy" : ["rotor"]})
+run_experiments({**params_chen,       **params_128_r, "cache_policy" : ["rotor"]})
+run_experiments({**params_chen,       **params_128_x, "cache_policy" : ["rotor"]})
+
+
 
 
 print("done")
